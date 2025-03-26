@@ -19,6 +19,7 @@
   "homepage": "https://github.com/MaciejkaG/trazaar-api#readme",
   "dependencies": {
     "dotenv": "^16.4.7",
-    "hypixel-api-reborn": "^11.3.7"
+    "hypixel-api-reborn": "^11.3.7",
+    "postgres": "^3.4.5"
   }
 }
