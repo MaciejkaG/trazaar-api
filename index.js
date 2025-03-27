@@ -6,7 +6,7 @@ import db from "./utils/db.js";
 const hypixel = new Hypixel();
 
 // Record the items in the database. There's nothing else in main right now, but I'm prepairing the dataset while developing the full app.
-setInterval(recordPrices, 30000);
+setInterval(recordPrices, 300 * 1000); // 5 minutes
 
 async function recordPrices() {
     try {
