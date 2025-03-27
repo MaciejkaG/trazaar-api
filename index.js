@@ -19,7 +19,9 @@ const server = http.createServer(app);
 initWS(server);
 
 // Record the items in the database. There's nothing else in main right now, but I'm prepairing the dataset while developing the full app.
-setInterval(recordPrices, 300 * 1000); // 5 minutes
+if (process.env.NODE_ENV === "production") {
+    setInterval(recordPrices, 300 * 1000); // 5 minutes
+}
 
 async function recordPrices() {
     try {
