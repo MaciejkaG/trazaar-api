@@ -1,5 +1,7 @@
-import Hypixel from "hypixel-api-reborn";
+// Hypixel API client
 
-const hypixel = new Hypixel.Client(process.env.HYPIXEL_API_KEY);
+import Hypixel from "../lib/hypixel.js";
+
+const hypixel = new Hypixel();
 
 export default hypixel;

@@ -1,5 +1,11 @@
 import "dotenv/config";
 
+import express from "express";
+import http from "http";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
+
 import hypixel from "./utils/hypixel.js";
 import db from "./utils/db.js";
 
@@ -14,7 +20,9 @@ const server = http.createServer(app);
 initWS(server);
 
 // Record the items in the database. There's nothing else in main right now, but I'm prepairing the dataset while developing the full app.
-setInterval(recordPrices, 30000);
+if (process.env.NODE_ENV === "production") {
+    setInterval(recordPrices, 300 * 1000); // 5 minutes
+}
 
 async function recordPrices() {
     try {
