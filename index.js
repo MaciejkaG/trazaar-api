@@ -12,6 +12,7 @@ import db from "./utils/db.js";
 import initWS from "./utils/socket.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+process.__dirname = __dirname;
 
 const app = express();
 const server = http.createServer(app);
@@ -90,7 +91,7 @@ app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : 0);
 // Use routers from ./routes
 fs.readdir(path.join(__dirname, "routers"), (err, files) => {
     files.forEach(async (file) => {
-        if (file.endsWith(".js")) {
+        if (file.endsWith(".js") && !file.startsWith("_")) {
             const {
                 default: { startingPath, router },
             } = await import(
