@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import express from "express";
+import { CronJob } from "cron";
 import http from "http";
 import fs from "fs";
 import path from "path";
@@ -21,7 +22,8 @@ initWS(server);
 
 // Record the items in the database. There's nothing else in main right now, but I'm prepairing the dataset while developing the full app.
 if (process.env.NODE_ENV === "production") {
-    setInterval(recordPrices, 300 * 1000); // 5 minutes
+    // setInterval(recordPrices, 300 * 1000); // 5 minutes
+    new CronJob("*/5 * * * *", recordPrices, null, true); // Run every 5 minutes
 }
 
 async function recordPrices() {
