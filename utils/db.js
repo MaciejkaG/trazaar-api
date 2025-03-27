@@ -1,3 +1,5 @@
+// Postgresql client
+
 import pg from "pg";
 
 // Create a pool instead of a client for better performance

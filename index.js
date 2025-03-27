@@ -1,9 +1,22 @@
 import "dotenv/config";
 
-import Hypixel from "./utils/hypixel.js";
+import express from "express";
+import http from "http";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
+
+import hypixel from "./utils/hypixel.js";
 import db from "./utils/db.js";
 
-const hypixel = new Hypixel();
+import initWS from "./utils/socket.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const app = express();
+const server = http.createServer(app);
+
+initWS(server);
 
 // Record the items in the database. There's nothing else in main right now, but I'm prepairing the dataset while developing the full app.
 setInterval(recordPrices, 300 * 1000); // 5 minutes
@@ -69,3 +82,25 @@ async function recordPrices() {
         console.error("Failed to record bazaar prices:", error);
     }
 }
+
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : 0);
+
+// Use routers from ./routes
+fs.readdir(path.join(__dirname, "routers"), (err, files) => {
+    files.forEach(async (file) => {
+        if (file.endsWith(".js")) {
+            const {
+                default: { startingPath, router },
+            } = await import(
+                pathToFileURL(path.join(__dirname, "routers", file))
+            );
+            app.use(startingPath, router);
+        }
+    });
+});
+
+// Start the server
+const port = parseInt(process.env.PORT ?? 3000);
+server.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
