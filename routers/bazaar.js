@@ -14,25 +14,28 @@ const router = express.Router();
  * @returns {Array} Price history points
  */
 router.get("/history/:itemId", async (req, res) => {
-  try {
-    const itemId = req.params?.itemId ? req.params.itemId.toUpperCase() : null;
-    const { startDate, endDate, interval = "hourly" } = req.query;
-    
-    if (!itemId || !startDate || !endDate) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing one or more of required parameters: itemId, startDate, and endDate" 
-      });
-    }
-    
-    let query;
-    let params = [itemId, startDate, endDate];
-    
-    // Different queries based on requested interval using TimescaleDB features
-    switch(interval) {
-      case "raw":
-        // Return all data points without aggregation
-        query = `
+    try {
+        const itemId = req.params?.itemId
+            ? req.params.itemId.toUpperCase()
+            : null;
+        const { startDate, endDate, interval = "hourly" } = req.query;
+
+        if (!itemId || !startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Missing one or more of required parameters: itemId, startDate, and endDate",
+            });
+        }
+
+        let query;
+        let params = [itemId, startDate, endDate];
+
+        // Different queries based on requested interval using TimescaleDB features
+        switch (interval) {
+            case "raw":
+                // Return all data points without aggregation
+                query = `
           SELECT 
             timestamp, 
             buy_price, 
@@ -44,11 +47,11 @@ router.get("/history/:itemId", async (req, res) => {
             AND timestamp BETWEEN $2 AND $3
           ORDER BY timestamp ASC
         `;
-        break;
-        
-      case "daily":
-        // Return daily aggregated data using TimescaleDB time_bucket
-        query = `
+                break;
+
+            case "daily":
+                // Return daily aggregated data using TimescaleDB time_bucket
+                query = `
           SELECT 
             time_bucket('1 day', timestamp) AS timestamp,
             AVG(buy_price) AS buy_price,
@@ -61,12 +64,12 @@ router.get("/history/:itemId", async (req, res) => {
           GROUP BY time_bucket('1 day', timestamp)
           ORDER BY timestamp ASC
         `;
-        break;
-        
-      case "hourly":
-      default:
-        // Return hourly aggregated data using TimescaleDB time_bucket
-        query = `
+                break;
+
+            case "hourly":
+            default:
+                // Return hourly aggregated data using TimescaleDB time_bucket
+                query = `
           SELECT 
             time_bucket('1 hour', timestamp) AS timestamp,
             AVG(buy_price) AS buy_price,
@@ -79,24 +82,26 @@ router.get("/history/:itemId", async (req, res) => {
           GROUP BY time_bucket('1 hour', timestamp)
           ORDER BY timestamp ASC
         `;
-        break;
+                break;
+        }
+
+        const result = await db.query(query, params);
+
+        return res.status(200).json({
+            success: true,
+            data: result.rows,
+        });
+    } catch (error) {
+        console.error("Error fetching bazaar price history:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined,
+        });
     }
-    
-    const result = await db.query(query, params);
-    
-    return res.status(200).json({
-      success: true,
-      data: result.rows
-    });
-    
-  } catch (error) {
-    console.error("Error fetching bazaar price history:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
 });
 
 /**
@@ -105,8 +110,8 @@ router.get("/history/:itemId", async (req, res) => {
  * @returns {Array} Latest price data for all items
  */
 router.get("/latest", async (req, res) => {
-  try {
-    const query = `
+    try {
+        const query = `
       WITH latest_timestamps AS (
         SELECT 
           item_id,
@@ -126,22 +131,24 @@ router.get("/latest", async (req, res) => {
         ON h.item_id = lt.item_id 
         AND h.timestamp = lt.max_timestamp
     `;
-    
-    const result = await db.query(query);
-    
-    return res.status(200).json({
-      success: true,
-      data: result.rows
-    });
-    
-  } catch (error) {
-    console.error("Error fetching latest bazaar prices:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+
+        const result = await db.query(query);
+
+        return res.status(200).json({
+            success: true,
+            data: result.rows,
+        });
+    } catch (error) {
+        console.error("Error fetching latest bazaar prices:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
 });
 
 /**
@@ -152,27 +159,36 @@ router.get("/latest", async (req, res) => {
  * @returns {Object} Price statistics
  */
 router.get("/stats/:itemId", async (req, res) => {
-  try {
-    const { itemId } = req.params;
-    const { period = "week" } = req.query;
-    
-    if (!itemId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing required parameter: itemId" 
-      });
-    }
-    
-    let interval;
-    switch(period) {
-      case "day": interval = "1 day"; break;
-      case "week": interval = "7 days"; break;
-      case "month": interval = "30 days"; break;
-      case "year": interval = "365 days"; break;
-      default: interval = "7 days";
-    }
-    
-    const query = `
+    try {
+        const { itemId } = req.params;
+        const { period = "week" } = req.query;
+
+        if (!itemId) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required parameter: itemId",
+            });
+        }
+
+        let interval;
+        switch (period) {
+            case "day":
+                interval = "1 day";
+                break;
+            case "week":
+                interval = "7 days";
+                break;
+            case "month":
+                interval = "30 days";
+                break;
+            case "year":
+                interval = "365 days";
+                break;
+            default:
+                interval = "7 days";
+        }
+
+        const query = `
       SELECT 
         MIN(buy_price) AS min_buy_price,
         MAX(buy_price) AS max_buy_price,
@@ -186,22 +202,24 @@ router.get("/stats/:itemId", async (req, res) => {
       WHERE item_id = $1
         AND timestamp > NOW() - INTERVAL $2
     `;
-    
-    const result = await db.query(query, [itemId, interval]);
-    
-    return res.status(200).json({
-      success: true,
-      data: result.rows[0]
-    });
-    
-  } catch (error) {
-    console.error("Error fetching bazaar stats:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+
+        const result = await db.query(query, [itemId, interval]);
+
+        return res.status(200).json({
+            success: true,
+            data: result.rows[0],
+        });
+    } catch (error) {
+        console.error("Error fetching bazaar stats:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
 });
 
 /**
@@ -212,41 +230,41 @@ router.get("/stats/:itemId", async (req, res) => {
  * @returns {Object} Trend data including moving averages and price changes
  */
 router.get("/trends/:itemId", async (req, res) => {
-  try {
-    const { itemId } = req.params;
-    const { period = "week" } = req.query;
-    
-    if (!itemId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing required parameter: itemId" 
-      });
-    }
-    
-    let interval, windowSize;
-    switch(period) {
-      case "day": 
-        interval = "1 day"; 
-        windowSize = "3 hours";
-        break;
-      case "week": 
-        interval = "7 days"; 
-        windowSize = "12 hours";
-        break;
-      case "month": 
-        interval = "30 days"; 
-        windowSize = "1 day";
-        break;
-      case "year": 
-        interval = "365 days"; 
-        windowSize = "7 days";
-        break;
-      default: 
-        interval = "7 days";
-        windowSize = "12 hours";
-    }
-    
-    const query = `
+    try {
+        const { itemId } = req.params;
+        const { period = "week" } = req.query;
+
+        if (!itemId) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required parameter: itemId",
+            });
+        }
+
+        let interval, windowSize;
+        switch (period) {
+            case "day":
+                interval = "1 day";
+                windowSize = "3 hours";
+                break;
+            case "week":
+                interval = "7 days";
+                windowSize = "12 hours";
+                break;
+            case "month":
+                interval = "30 days";
+                windowSize = "1 day";
+                break;
+            case "year":
+                interval = "365 days";
+                windowSize = "7 days";
+                break;
+            default:
+                interval = "7 days";
+                windowSize = "12 hours";
+        }
+
+        const query = `
       WITH time_data AS (
         SELECT 
           time_bucket('1 hour', timestamp) AS bucket,
@@ -289,36 +307,46 @@ router.get("/trends/:itemId", async (req, res) => {
           NULLIF(LAG(sell_price, 24) OVER (ORDER BY bucket), 0) * 100 AS sell_price_pct_change_24h
       FROM time_data
     `;
-    
-    const result = await db.query(query, [itemId, interval]);
-    
-    // Calculate additional trend metrics
-    const trendData = result.rows;
-    const latestData = trendData.length > 0 ? trendData[trendData.length - 1] : null;
-    
-    // Add overall trend direction based on moving averages
-    const trends = latestData ? {
-      short_term: latestData.buy_price_ma6 > latestData.buy_price_ma24 ? 'up' : 'down',
-      price_volatility: Math.abs(latestData.buy_price_pct_change_24h || 0),
-      latest_change_24h: latestData.buy_price_pct_change_24h || 0
-    } : null;
-    
-    return res.status(200).json({
-      success: true,
-      data: {
-        history: trendData,
-        trends
-      }
-    });
-    
-  } catch (error) {
-    console.error("Error fetching bazaar trends:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+
+        const result = await db.query(query, [itemId, interval]);
+
+        // Calculate additional trend metrics
+        const trendData = result.rows;
+        const latestData =
+            trendData.length > 0 ? trendData[trendData.length - 1] : null;
+
+        // Add overall trend direction based on moving averages
+        const trends = latestData
+            ? {
+                  short_term:
+                      latestData.buy_price_ma6 > latestData.buy_price_ma24
+                          ? "up"
+                          : "down",
+                  price_volatility: Math.abs(
+                      latestData.buy_price_pct_change_24h || 0
+                  ),
+                  latest_change_24h: latestData.buy_price_pct_change_24h || 0,
+              }
+            : null;
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                history: trendData,
+                trends,
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching bazaar trends:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
 });
 
 /**
@@ -329,18 +357,25 @@ router.get("/trends/:itemId", async (req, res) => {
  * @returns {Array} Most volatile items by price change percentage
  */
 router.get("/volatility", async (req, res) => {
-  try {
-    const { period = "week", limit = 10 } = req.query;
-    
-    let interval;
-    switch(period) {
-      case "day": interval = "1 day"; break;
-      case "week": interval = "7 days"; break;
-      case "month": interval = "30 days"; break;
-      default: interval = "7 days";
-    }
-    
-    const query = `
+    try {
+        const { period = "week", limit = 10 } = req.query;
+
+        let interval;
+        switch (period) {
+            case "day":
+                interval = "1 day";
+                break;
+            case "week":
+                interval = "7 days";
+                break;
+            case "month":
+                interval = "30 days";
+                break;
+            default:
+                interval = "7 days";
+        }
+
+        const query = `
       WITH item_stats AS (
         SELECT 
           item_id,
@@ -369,22 +404,24 @@ router.get("/volatility", async (req, res) => {
       ORDER BY volatility_score DESC
       LIMIT $2
     `;
-    
-    const result = await db.query(query, [interval, limit]);
-    
-    return res.status(200).json({
-      success: true,
-      data: result.rows
-    });
-    
-  } catch (error) {
-    console.error("Error fetching bazaar volatility:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+
+        const result = await db.query(query, [interval, limit]);
+
+        return res.status(200).json({
+            success: true,
+            data: result.rows,
+        });
+    } catch (error) {
+        console.error("Error fetching bazaar volatility:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
 });
 
 export default { startingPath: "/api/bazaar", router }; // Passing the starting path of the router here.
