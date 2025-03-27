@@ -22,7 +22,6 @@ initWS(server);
 
 // Record the items in the database. There's nothing else in main right now, but I'm prepairing the dataset while developing the full app.
 if (process.env.NODE_ENV === "production") {
-    // setInterval(recordPrices, 300 * 1000); // 5 minutes
     new CronJob("*/5 * * * *", recordPrices, null, true); // Run every 5 minutes
 }
 
@@ -31,8 +30,6 @@ async function recordPrices() {
         console.log("Fetching Skyblock Bazaar data...");
         const items = await hypixel.getSkyblockBazaar();
         console.log(`Retrieved ${items.length} items from Bazaar`);
-        // console.log(items[0]);
-        // return;
 
         // Build values and query parts
         const valueParams = [];
@@ -44,17 +41,26 @@ async function recordPrices() {
                 // console.warn(`Skipping invalid item: ${JSON.stringify(item)}`);
                 return;
             }
-            
-            // Add values to params array
-            valueParams.push(
+
+            const columns = [
                 item.product_id,
                 item.quick_status.sellPrice || 0,
                 item.quick_status.buyPrice || 0,
                 item.quick_status.sellVolume || 0,
                 item.quick_status.buyVolume || 0,
                 item.quick_status.sellMovingWeek || 0,
-                item.quick_status.buyMovingWeek || 0
-            );
+                item.quick_status.buyMovingWeek || 0,
+            ];
+
+            const validItem = columns.reduce((partialSum, a) => typeof a === "number" ? partialSum + a : 0, 0);
+            if (!validItem) {
+                // Item is not available on the Bazaar, as all its values are 0 so there's no need of saving it.
+                // We're saving ~30% of space in the database by not saving these items.
+                return;
+            }
+            
+            // Add values to params array
+            valueParams.push(...columns);
             
             // Create placeholders for this row
             const placeholders = [];
